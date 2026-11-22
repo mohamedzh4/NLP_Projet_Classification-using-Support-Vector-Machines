@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Classificateur de questions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f3ec; --card:#fffdf9; --ink:#1c2433; --muted:#6b7280; --line:#e6dfd2;
+  --accent:#9a7b3f; --accent-soft:#f1e8d3; --navy:#1f3a5f; --ok:#2f6f4f; --err:#a3392f;
+  --shadow:0 1px 2px rgba(28,36,51,.04),0 12px 32px -12px rgba(28,36,51,.14);
+  --serif:'Cormorant Garamond',Georgia,'Times New Roman',serif;
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#12161f; --card:#1a2030; --ink:#ece7dc; --muted:#98a0b0; --line:#2a3246;
+    --accent:#d3b169; --accent-soft:#2a2a2a; --navy:#9db7dc; --ok:#7ccaa0; --err:#e58a80;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px -12px rgba(0,0,0,.5);}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55;
+  background-image:radial-gradient(900px 400px at 50% -120px,var(--accent-soft),transparent 70%);}
+main{max-width:760px;margin:0 auto;padding:64px 20px 80px}
+header{text-align:center;margin-bottom:40px}
+.eyebrow{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:600}
+h1{font-family:var(--serif);font-weight:600;font-size:clamp(36px,6vw,52px);line-height:1.08;margin:10px 0 12px;color:var(--ink)}
+.lead{color:var(--muted);max-width:520px;margin:0 auto;font-size:15px}
+.rule{width:56px;height:1px;background:var(--accent);margin:22px auto 0}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:var(--shadow)}
+label{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+textarea{width:100%;margin-top:10px;border:1px solid var(--line);border-radius:12px;background:transparent;color:var(--ink);
+  font-family:var(--serif);font-size:22px;line-height:1.35;padding:14px 16px;resize:vertical;min-height:88px;outline:none;
+  transition:border-color .2s, box-shadow .2s}
+textarea:focus{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent)}
+textarea::placeholder{color:var(--muted);opacity:.7}
+.row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:14px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font:inherit;font-size:12.5px;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;
+  padding:5px 12px;cursor:pointer;transition:all .15s}
+.chip:hover{color:var(--accent);border-color:var(--accent)}
+button.go{font:inherit;font-weight:600;font-size:14px;letter-spacing:.04em;color:#fffdf9;background:var(--navy);border:0;border-radius:999px;
+  padding:11px 26px;cursor:pointer;transition:transform .15s,opacity .15s}
+@media (prefers-color-scheme:dark){button.go{color:#12161f}}
+button.go:hover{transform:translateY(-1px)} button.go:disabled{opacity:.55;cursor:wait;transform:none}
+
+#results{margin-top:34px;display:grid;gap:14px}
+.q-echo{font-family:var(--serif);font-style:italic;font-size:22px;color:var(--muted);text-align:center;margin:0 0 6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 22px;box-shadow:var(--shadow);
+  display:grid;grid-template-columns:1fr auto;gap:6px 20px;align-items:center;animation:in .45s ease both}
+.card:nth-child(2){animation-delay:.06s}.card:nth-child(3){animation-delay:.12s}.card:nth-child(4){animation-delay:.18s}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.model{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;grid-column:1/-1}
+.coarse{font-family:var(--serif);font-size:30px;font-weight:600;line-height:1.1}
+.coarse small{display:block;font-family:var(--sans);font-size:13px;font-weight:400;color:var(--muted);margin-top:4px}
+.code{font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.08em;color:var(--navy);background:var(--accent-soft);
+  border-radius:8px;padding:3px 9px;margin-right:10px;vertical-align:middle}
+.fine{text-align:right;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.fine b{display:block;font-family:var(--serif);text-transform:none;letter-spacing:0;font-size:22px;color:var(--ink);font-weight:600}
+.card.error{border-color:color-mix(in srgb,var(--err) 40%,var(--line))}
+.card.error .msg{grid-column:1/-1;color:var(--err);font-size:14px}
+.verdict{text-align:center;font-size:13.5px;color:var(--muted);margin-top:4px}
+.verdict.ok{color:var(--ok)}
+.hint{text-align:center;color:var(--muted);font-size:14px;margin-top:30px}
+footer{text-align:center;margin-top:48px;font-size:12px;color:var(--muted);letter-spacing:.06em}
+@media (max-width:520px){.card{grid-template-columns:1fr}.fine{text-align:left}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Traitement automatique des langues</div>
+    <h1>Classificateur de questions</h1>
+    <p class="lead">Posez une question en anglais : les modèles SVM devinent ce qu'elle attend comme réponse (personne, lieu, nombre…).</p>
+    <div class="rule"></div>
+  </header>
+
+  <form class="panel" id="form">
+    <label for="q">Votre question</label>
+    <textarea id="q" placeholder="Who was the first American in space ?" autofocus></textarea>
+    <div class="row">
+      <div class="chips" id="chips"></div>
+      <button class="go" id="go" type="submit">Classer</button>
+    </div>
+  </form>
+
+  <section id="results" aria-live="polite">
+    <p class="hint">Les résultats apparaîtront ici.</p>
+  </section>
+
+  <footer>Mots · N-grammes · Noyau d'arbre — Zhang &amp; Lee, SIGIR 2003</footer>
+</main>
+
+<script>
+const EXEMPLES = [
+  "Who was the first American in space?",
+  "Where is the Eiffel Tower?",
+  "How many people live in Tokyo?",
+  "What does NASA stand for?"
+];
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+EXEMPLES.forEach(t => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip"; b.textContent = t;
+  b.onclick = () => { $("q").value = t; $("form").requestSubmit(); };
+  $("chips").appendChild(b);
+});
+
+$("q").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("form").requestSubmit(); }
+});
+
+$("form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const question = $("q").value.trim();
+  if (!question) return;
+  $("go").disabled = true; $("go").textContent = "Analyse…";
+  try {
+    const r = await fetch("/api/predire", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({question})});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.erreur || "Erreur serveur");
+    afficher(d);
+  } catch (err) {
+    $("results").innerHTML = `<div class="card error"><div class="model">Erreur</div><div class="msg">${esc(err.message)}</div></div>`;
+  } finally {
+    $("go").disabled = false; $("go").textContent = "Classer";
+  }
+});
+
+function afficher(d) {
+  const ok = d.resultats.filter(x => !x.erreur);
+  const classes = new Set(ok.map(x => x.grossier));
+  let html = `<p class="q-echo">« ${esc(d.question)} »</p>`;
+  for (const x of d.resultats) {
+    if (x.erreur) {
+      html += `<div class="card error"><div class="model">${esc(x.modele)}</div><div class="msg">${esc(x.erreur)}</div></div>`;
+    } else {
+      html += `<div class="card"><div class="model">${esc(x.modele)}</div>
+        <div class="coarse"><span class="code">${esc(x.grossier)}</span>${esc(x.grossier_nom)}<small>Classe grossière</small></div>
+        <div class="fine">Classe fine<b>${esc(x.fin)}</b></div></div>`;
+    }
+  }
+  if (ok.length > 1) {
+    html += classes.size === 1
+      ? `<p class="verdict ok">Tous les modèles s'accordent sur la classe grossière.</p>`
+      : `<p class="verdict">Les modèles ne sont pas d'accord sur la classe grossière.</p>`;
+  }
+  $("results").innerHTML = html;
+}
+</script>
+</body>
+</html>
